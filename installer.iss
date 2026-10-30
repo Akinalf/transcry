@@ -1,10 +1,10 @@
 ; Installateur de Transcry (Inno Setup 6.1+)
-; Le modèle (1,5 Go) est téléchargé pendant l'installation depuis la release GitHub "modele-v1".
+; Le modèle (1,6 Go) est téléchargé pendant l'installation depuis la release GitHub "modele-v2".
 
 #define AppName "Transcry"
-#define AppVersion "3.0.0"
+#define AppVersion "3.1.0"
 #define AppExe "Transcry.exe"
-#define ModeleBase "https://github.com/Akinalf/transcry/releases/download/modele-v1/"
+#define ModeleBase "https://github.com/Akinalf/transcry/releases/download/modele-v2/"
 
 [Setup]
 AppId={{B7A1D3E2-5C4F-4E6B-9A10-7F3C2D8E1A55}
@@ -41,25 +41,55 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopico
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "Lancer {#AppName}"; Flags: nowait postinstall skipifsilent
 
+[InstallDelete]
+; Mise à jour depuis la 3.0 : l'ancien modèle "medium" n'est plus utilisé.
+Type: filesandordirs; Name: "{app}\_internal\modele\medium"
+
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\_internal\modele"
 
 [Code]
 const
-  DossierModele = '\_internal\modele\medium';
+  DossierModele = '\_internal\modele\large-v3-turbo';
+  NbFichiers = 5;
 
 var
   PageTelechargement: TDownloadWizardPage;
 
+function NomFichier(i: Integer): String;
+begin
+  case i of
+    0: Result := 'config.json';
+    1: Result := 'preprocessor_config.json';
+    2: Result := 'tokenizer.json';
+    3: Result := 'vocabulary.json';
+  else
+    Result := 'model.bin';
+  end;
+end;
+
+function EmpreinteFichier(i: Integer): String;
+begin
+  case i of
+    0: Result := 'b0253ea6c0d3bea6b1e19e91a02acfd3b53f4467362efcb5a3e6b16c9b3a9b7e';
+    1: Result := '7ccc62c6f2765af1f3b46c00c9b5894426835a05021c8b9c01eecb6dfb542711';
+    2: Result := '297b13372ac43916285644fb9687add3cc62ee2a1adb60da3dc25cc94c1871fd';
+    3: Result := 'c69260f2ab26d659b7c398f9a2b2b48ed0df16c3b47d7326782fd9cba71690c1';
+  else
+    Result := 'e76620f83d5f5b69efd3d87e3dc180c1bd21df9fbebacfd4335e5e1efcc018da';
+  end;
+end;
+
 procedure InitializeWizard;
 begin
   PageTelechargement := CreateDownloadPage('Téléchargement du modèle',
-    'Le modèle de reconnaissance vocale (environ 1,5 Go) est téléchargé une seule fois.', nil);
+    'Le modèle de reconnaissance vocale (environ 1,6 Go) est téléchargé une seule fois.', nil);
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
 var
   Dossier: String;
+  i: Integer;
 begin
   Result := True;
   if CurPageID = wpReady then begin
@@ -68,10 +98,8 @@ begin
     if FileExists(Dossier + '\model.bin') then Exit;
 
     PageTelechargement.Clear;
-    PageTelechargement.Add('{#ModeleBase}config.json', 'config.json', '3622a2ddc41ec0e0fd4e68c13c6830f03b90c38d89aaad184de02c8c642cf807');
-    PageTelechargement.Add('{#ModeleBase}tokenizer.json', 'tokenizer.json', 'fb7b63191e9bb045082c79fd742a3106a12c99513ab30df4a0d47fa6cb6fd0ab');
-    PageTelechargement.Add('{#ModeleBase}vocabulary.txt', 'vocabulary.txt', '34ce3fe1c5041027b3f8d42912270993f986dbc4bb34cf27f951e34a1e453913');
-    PageTelechargement.Add('{#ModeleBase}model.bin', 'model.bin', '9b45e1009dcc4ab601eff815b61d80e60ce3fd8c74c1a14f4a282258286b51ae');
+    for i := 0 to NbFichiers - 1 do
+      PageTelechargement.Add('{#ModeleBase}' + NomFichier(i), NomFichier(i), EmpreinteFichier(i));
     PageTelechargement.Show;
     try
       try
@@ -92,7 +120,6 @@ end;
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   Dossier, Fichier: String;
-  Fichiers: TArrayOfString;
   i: Integer;
 begin
   // Les fichiers téléchargés sont dans le dossier temporaire d'Inno : on les place dans l'appli.
@@ -100,15 +127,10 @@ begin
     Dossier := ExpandConstant('{app}') + DossierModele;
     if FileExists(Dossier + '\model.bin') then Exit;
     ForceDirectories(Dossier);
-    SetArrayLength(Fichiers, 4);
-    Fichiers[0] := 'config.json';
-    Fichiers[1] := 'tokenizer.json';
-    Fichiers[2] := 'vocabulary.txt';
-    Fichiers[3] := 'model.bin';
-    for i := 0 to 3 do begin
-      Fichier := ExpandConstant('{tmp}\') + Fichiers[i];
-      if not RenameFile(Fichier, Dossier + '\' + Fichiers[i]) then
-        FileCopy(Fichier, Dossier + '\' + Fichiers[i], False);
+    for i := 0 to NbFichiers - 1 do begin
+      Fichier := ExpandConstant('{tmp}\') + NomFichier(i);
+      if not RenameFile(Fichier, Dossier + '\' + NomFichier(i)) then
+        CopyFile(Fichier, Dossier + '\' + NomFichier(i), False);
     end;
   end;
 end;
