@@ -37,8 +37,8 @@ def charger_modele():
             from faster_whisper import WhisperModel
 
             # Modèle embarqué dans l'appli ; à défaut, téléchargement classique.
-            local = chemin_ressource(os.path.join("modele", "medium"))
-            source = local if os.path.isdir(local) else "medium"
+            local = chemin_ressource(os.path.join("modele", "large-v3-turbo"))
+            source = local if os.path.isdir(local) else "large-v3-turbo"
             _modele = WhisperModel(source, device="cpu", compute_type="int8")
     return _modele
 
