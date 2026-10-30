@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+build/
+dist/
+Output/
+*.spec
+# Modèle Whisper (1,5 Go) : publié en release, pas dans le dépôt
+modele/
